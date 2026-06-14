@@ -1,0 +1,22 @@
+ultralytics
+pandas
+opencv-python
+numpy
+scipy
+filterpy
+torch
+torchvision
+
+# OCR engines
+pytesseract
+easyocr
+paddleocr
+paddlepaddle
+python-doctr[torch]
+transformers
+
+# web backend
+flask
+
+# image processing
+Pillow

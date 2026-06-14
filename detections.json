@@ -1,0 +1,128 @@
+[
+  {
+    "timestamp": "2026-04-07T08:10:09.849397",
+    "plate_text": "STB 6224",
+    "count": 3,
+    "car_id": 58,
+    "frame": 842
+  },
+  {
+    "timestamp": "2026-04-07T08:10:10.361553",
+    "plate_text": "5C8 6224",
+    "count": 6,
+    "car_id": 58,
+    "frame": 843
+  },
+  {
+    "timestamp": "2026-04-07T08:10:20.762593",
+    "plate_text": "545 7853",
+    "count": 1,
+    "car_id": 83,
+    "frame": 1218
+  },
+  {
+    "timestamp": "2026-04-07T08:10:26.664517",
+    "plate_text": "M5S Y705",
+    "count": 3,
+    "car_id": 94,
+    "frame": 1350
+  },
+  {
+    "timestamp": "2026-04-07T08:10:27.177394",
+    "plate_text": "5SY 7089",
+    "count": 6,
+    "car_id": 94,
+    "frame": 1352
+  },
+  {
+    "timestamp": "2026-04-17T23:09:26.900108",
+    "plate_text": "5AN L408",
+    "count": 3,
+    "car_id": 1,
+    "frame": 0
+  },
+  {
+    "timestamp": "2026-04-17T23:09:27.580573",
+    "plate_text": "6SA 8166",
+    "count": 6,
+    "car_id": 2,
+    "frame": 0
+  },
+  {
+    "timestamp": "2026-04-17T23:09:28.396722",
+    "plate_text": "5AN 4408",
+    "count": 6,
+    "car_id": 1,
+    "frame": 2
+  },
+  {
+    "timestamp": "2026-04-17T23:09:42.008022",
+    "plate_text": "816 6BSA",
+    "count": 1,
+    "car_id": 6,
+    "frame": 277
+  },
+  {
+    "timestamp": "2026-04-17T23:09:42.638535",
+    "plate_text": "8SA 6166",
+    "count": 3,
+    "car_id": 6,
+    "frame": 278
+  },
+  {
+    "timestamp": "2026-04-17T23:09:43.290952",
+    "plate_text": "6SA 8166",
+    "count": 5,
+    "car_id": 6,
+    "frame": 279
+  },
+  {
+    "timestamp": "2026-04-17T23:09:44.980781",
+    "plate_text": "BEN OSTY",
+    "count": 1,
+    "car_id": 8,
+    "frame": 304
+  },
+  {
+    "timestamp": "2026-04-17T23:09:45.685819",
+    "plate_text": "6SA O166",
+    "count": 3,
+    "car_id": 8,
+    "frame": 308
+  },
+  {
+    "timestamp": "2026-04-17T23:09:46.310658",
+    "plate_text": "6SA 8166",
+    "count": 5,
+    "car_id": 8,
+    "frame": 309
+  },
+  {
+    "timestamp": "2026-04-17T23:09:50.553660",
+    "plate_text": "654 H166",
+    "count": 4,
+    "car_id": 9,
+    "frame": 332
+  },
+  {
+    "timestamp": "2026-04-17T23:09:51.299829",
+    "plate_text": "6SA H166",
+    "count": 7,
+    "car_id": 9,
+    "frame": 336
+  },
+  {
+    "timestamp": "2026-04-17T23:10:51.596104",
+    "plate_text": "STB 6224",
+    "count": 3,
+    "car_id": 58,
+    "frame": 842
+  },
+  {
+    "timestamp": "2026-04-17T23:10:52.148196",
+    "plate_text": "5C8 6224",
+    "count": 6,
+    "car_id": 58,
+    "frame": 843
+  }
+]

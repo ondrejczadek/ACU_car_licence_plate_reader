@@ -1,0 +1,53 @@
+# Virtual environment
+venv/
+env/
+.venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Video files (too large for GitHub)
+*.mp4
+*.MP4
+*.mov
+*.MOV
+*.avi
+*.mkv
+
+# Model weights (too large for GitHub)
+*.pt
+*.pth
+*.onnx
+*.weights
+
+# YOLO training runs
+runs/
+
+# Datasets (typically large)
+dataset/
+
+# Test outputs
+test_results/
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
