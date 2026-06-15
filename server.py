@@ -1,13 +1,10 @@
+from util import *
+from sort.sort import Sort
 from flask import Flask, Response, jsonify, render_template, request
-from ultralytics import YOLO
 import time
 import threading
 
-from util import *
-
 suppress_warnings()
-
-from sort.sort import Sort
 
 app = Flask(__name__)
 
@@ -16,42 +13,6 @@ lock = threading.Lock()
 current_frame_jpg = None
 current_spz_list = []  # [{"text": "1AB 1234", "count": 5}, ...]
 is_running = False
-
-json_lock = threading.Lock()
-
-def load_json():
-    if os.path.exists(JSON_PATH):
-        with open(JSON_PATH, 'r') as f:
-            return json.load(f)
-    return []
-
-def save_json(data):
-    with open(JSON_PATH, 'w') as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
-
-def add_detection(plate_text, score, car_id, frame_number):
-    with json_lock:
-        data = load_json()
-        now = datetime.datetime.now()
-        # pokud posledni zaznam se stejnou SPZ je < 2s stary, aktualizuj ho
-        merged = False
-        for i in range(len(data) - 1, -1, -1):
-            if data[i]["plate_text"] == plate_text:
-                last_ts = datetime.datetime.fromisoformat(data[i]["timestamp"])
-                if (now - last_ts).total_seconds() < 2:
-                    data[i]["count"] = max(data[i]["count"], score)
-                    data[i]["timestamp"] = now.isoformat()
-                    merged = True
-                break
-        if not merged:
-            data.append({
-                "timestamp": now.isoformat(),
-                "plate_text": plate_text,
-                "count": score,
-                "car_id": car_id,
-                "frame": frame_number
-            })
-        save_json(data)
 
 # --- DETEKCE VLAKNO ---
 
@@ -66,9 +27,6 @@ def detection_loop():
 
 def _run_detection():
     global current_frame_jpg, current_spz_list, is_running
-
-    device = 'mps' if torch.backends.mps.is_available() else 'cpu'
-    print(f'[INFO] Device: {device}')
 
     # --- HLAVNI SMYCKA ---
     mot_tracker = Sort()

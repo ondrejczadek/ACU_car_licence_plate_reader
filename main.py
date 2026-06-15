@@ -1,45 +1,11 @@
-import json
-import datetime
-import time
-import os
-
 from util import *
+from sort.sort import *
+import time
 
 suppress_warnings()
 
-from sort.sort import *
-
 results = {}
 mot_tracker = Sort()
-
-def load_json():
-    if os.path.exists(JSON_PATH):
-        with open(JSON_PATH, 'r') as f:
-            return json.load(f)
-    return []
-
-def save_detection(plate_text, score, car_id, frame_number):
-    data = load_json()
-    now = datetime.datetime.now()
-    merged = False
-    for i in range(len(data) - 1, -1, -1):
-        if data[i]["plate_text"] == plate_text:
-            last_ts = datetime.datetime.fromisoformat(data[i]["timestamp"])
-            if (now - last_ts).total_seconds() < 2:
-                data[i]["count"] = max(data[i]["count"], score)
-                data[i]["timestamp"] = now.isoformat()
-                merged = True
-            break
-    if not merged:
-        data.append({
-            "timestamp": now.isoformat(),
-            "plate_text": plate_text,
-            "count": score,
-            "car_id": car_id,
-            "frame": frame_number
-        })
-    with open(JSON_PATH, 'w') as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
 
 # --- HLAVNI SMYCKA ---
 cap = cv2.VideoCapture(source)

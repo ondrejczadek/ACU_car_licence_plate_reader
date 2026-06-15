@@ -1,7 +1,6 @@
+from util import *
 import os
 import glob
-
-from util import *
 
 suppress_warnings()
 
@@ -24,11 +23,11 @@ def try_read_plate(plate_img):
     all_readings = []
 
     engines = [
-        ('Tess  ', read_tesseract),
-        ('Easy  ', read_easyocr),
+        ('Tess', read_tesseract),
+        ('Easy', read_easyocr),
         ('Paddle', read_paddleocr),
-        ('docTR ', read_doctr),
-        ('TrOCR ', read_trocr),
+        ('docTR', read_doctr),
+        ('TrOCR', read_trocr),
     ]
 
     for eng_name, eng_func in engines:

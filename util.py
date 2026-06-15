@@ -1,4 +1,9 @@
 from ultralytics import YOLO
+from paddleocr import PaddleOCR
+from PIL import Image
+from collections import Counter
+from doctr.models import recognition_predictor
+from transformers import TrOCRProcessor, VisionEncoderDecoderModel
 import cv2
 import os
 import json
@@ -9,12 +14,8 @@ import torch
 import logging
 import warnings
 import easyocr
-from paddleocr import PaddleOCR
-from PIL import Image
-from collections import Counter
-from doctr.models import recognition_predictor
-from transformers import TrOCRProcessor, VisionEncoderDecoderModel
 import threading
+
 
 json_lock = threading.Lock()
 
@@ -30,7 +31,6 @@ device = 'mps' if torch.backends.mps.is_available() else 'cpu'
 print(f'[INFO] Device: {device}')
 
 # load models
-
 coco_model = YOLO('models/yolov8n.pt').to(device)
 license_plate_detector = YOLO('models/license_plate_detector1.0.pt').to(device)
 easy_reader = easyocr.Reader(['en'], gpu=False, verbose=False)
@@ -39,16 +39,18 @@ doctr_reader = recognition_predictor(pretrained=True)
 trocr_processor = TrOCRProcessor.from_pretrained('microsoft/trocr-base-printed')
 trocr_model = VisionEncoderDecoderModel.from_pretrained('microsoft/trocr-base-printed')
 
+# --- ignore warnings ---
 def suppress_warnings():
     os.environ['PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK'] = 'True'
     logging.getLogger('ppocr').setLevel(logging.ERROR)
     logging.getLogger('paddle').setLevel(logging.ERROR)
     warnings.filterwarnings('ignore')
 
-def clean_text(text):
+# --- PREPROCESSING function ---
+def clean_text(text): # not use
     return ''.join(c for c in text.upper() if c.isalnum())
 
-def order_pts(pts):
+def order_pts(pts): # not use
     rect = np.zeros((4, 2), dtype=np.float32)
     s = pts.sum(axis=1)
     rect[0] = pts[np.argmin(s)]
@@ -250,3 +252,62 @@ def vote_readings(readings):
     if len(voted) == 7 or len(voted) == 8:
         return voted
     return None
+
+# --- JSON operations ---
+
+def load_json():
+    if os.path.exists(JSON_PATH):
+        with open(JSON_PATH, 'r') as f:
+            return json.load(f)
+    return []
+
+def save_json(data):
+    with open(JSON_PATH, 'w') as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+
+def add_detection(plate_text, score, car_id, frame_number):
+    with json_lock:
+        data = load_json()
+        now = datetime.datetime.now()
+        # pokud posledni zaznam se stejnou SPZ je < 2s stary, aktualizuj ho
+        merged = False
+        for i in range(len(data) - 1, -1, -1):
+            if data[i]["plate_text"] == plate_text:
+                last_ts = datetime.datetime.fromisoformat(data[i]["timestamp"])
+                if (now - last_ts).total_seconds() < 2:
+                    data[i]["count"] = max(data[i]["count"], score)
+                    data[i]["timestamp"] = now.isoformat()
+                    merged = True
+                break
+        if not merged:
+            data.append({
+                "timestamp": now.isoformat(),
+                "plate_text": plate_text,
+                "count": score,
+                "car_id": car_id,
+                "frame": frame_number
+            })
+        save_json(data)
+
+def save_detection(plate_text, score, car_id, frame_number):
+    data = load_json()
+    now = datetime.datetime.now()
+    merged = False
+    for i in range(len(data) - 1, -1, -1):
+        if data[i]["plate_text"] == plate_text:
+            last_ts = datetime.datetime.fromisoformat(data[i]["timestamp"])
+            if (now - last_ts).total_seconds() < 2:
+                data[i]["count"] = max(data[i]["count"], score)
+                data[i]["timestamp"] = now.isoformat()
+                merged = True
+            break
+    if not merged:
+        data.append({
+            "timestamp": now.isoformat(),
+            "plate_text": plate_text,
+            "count": score,
+            "car_id": car_id,
+            "frame": frame_number
+        })
+    with open(JSON_PATH, 'w') as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
