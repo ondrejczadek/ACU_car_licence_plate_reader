@@ -1,7 +1,6 @@
 from flask import Flask, Response, jsonify, render_template, request
 from ultralytics import YOLO
 import time
-import torch
 import threading
 
 from util import *
@@ -20,6 +19,41 @@ is_running = False
 
 json_lock = threading.Lock()
 
+def load_json():
+    if os.path.exists(JSON_PATH):
+        with open(JSON_PATH, 'r') as f:
+            return json.load(f)
+    return []
+
+def save_json(data):
+    with open(JSON_PATH, 'w') as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+
+def add_detection(plate_text, score, car_id, frame_number):
+    with json_lock:
+        data = load_json()
+        now = datetime.datetime.now()
+        # pokud posledni zaznam se stejnou SPZ je < 2s stary, aktualizuj ho
+        merged = False
+        for i in range(len(data) - 1, -1, -1):
+            if data[i]["plate_text"] == plate_text:
+                last_ts = datetime.datetime.fromisoformat(data[i]["timestamp"])
+                if (now - last_ts).total_seconds() < 2:
+                    data[i]["count"] = max(data[i]["count"], score)
+                    data[i]["timestamp"] = now.isoformat()
+                    merged = True
+                break
+        if not merged:
+            data.append({
+                "timestamp": now.isoformat(),
+                "plate_text": plate_text,
+                "count": score,
+                "car_id": car_id,
+                "frame": frame_number
+            })
+        save_json(data)
+
+
 
 # --- DETEKCE VLAKNO ---
 
@@ -37,10 +71,6 @@ def _run_detection():
 
     device = 'mps' if torch.backends.mps.is_available() else 'cpu'
     print(f'[INFO] Device: {device}')
-
-    coco_model = YOLO('yolov8n.pt').to(device)
-
-    license_plate_detector = YOLO('license_plate_detector.pt').to(device)
 
     # --- OCR funkce ---
     def read_tesseract(img):
@@ -88,7 +118,7 @@ def _run_detection():
             else:
                 pil_img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
             pixel_values = trocr_processor(images=pil_img, return_tensors="pt").pixel_values
-            generated_ids = trocr_model_ocr.generate(pixel_values, max_new_tokens=20)
+            generated_ids = trocr_model.generate(pixel_values, max_new_tokens=20)
             text = trocr_processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
             return clean_text(text)
         except Exception:
@@ -124,7 +154,6 @@ def _run_detection():
         return None
 
     # --- HLAVNI SMYCKA ---
-    vehicles = [2, 3, 5, 7]
     mot_tracker = Sort()
 
     cap = cv2.VideoCapture(source)
