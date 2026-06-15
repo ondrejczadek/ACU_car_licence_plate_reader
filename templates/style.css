@@ -1,0 +1,104 @@
+body {
+    font-family: Arial, sans-serif;
+    background: #f5f0e8;
+    color: #333;
+    margin: 0;
+    padding: 40px 20px;
+}
+
+.container {
+    max-width: 1100px;
+    margin: 0 auto;
+    text-align: center;
+}
+
+h1 {
+    font-size: 22px;
+    font-weight: 600;
+    margin-bottom: 25px;
+    color: #222;
+}
+
+img {
+    width: 100%;
+    max-width: 1100px;
+    border-radius: 6px;
+    border: 1px solid #d5cfc5;
+}
+
+table {
+    width: 100%;
+    margin: 25px auto 0;
+    border-collapse: collapse;
+    background: #fff;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid #d5cfc5;
+    text-align: left;
+}
+
+th {
+    background: #ece7dd;
+    padding: 10px 20px;
+    font-size: 11px;
+    text-transform: uppercase;
+    color: #777;
+    letter-spacing: 1px;
+    border-bottom: 1px solid #d5cfc5;
+}
+
+td {
+    padding: 10px 20px;
+    border-bottom: 1px solid #f0ece4;
+    font-size: 14px;
+}
+
+tr:last-child td {
+    border-bottom: none;
+}
+
+.col-num {
+    width: 50px;
+    color: #aaa;
+    text-align: center;
+}
+
+.col-spz {
+    font-family: monospace;
+    font-weight: 700;
+    font-size: 16px;
+    letter-spacing: 2px;
+}
+
+.col-datum {
+    color: #888;
+}
+
+.col-pocet {
+    text-align: center;
+    color: #888;
+}
+
+.col-akce {
+    width: 40px;
+    text-align: center;
+}
+
+.smazat {
+    background: none;
+    border: none;
+    color: #ccc;
+    cursor: pointer;
+    font-size: 18px;
+    padding: 0;
+}
+
+.smazat:hover {
+    color: #e55;
+}
+
+.prazdno {
+    padding: 30px;
+    color: #bbb;
+    text-align: center;
+}
