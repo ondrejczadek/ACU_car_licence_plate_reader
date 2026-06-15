@@ -6,7 +6,7 @@ Použití:
     2. Uprav cestu v DATA_YAML na svůj dataset.yaml
     3. Spusť: python train_model.py
 
-Dataset musí mít strukturu:
+Dataset must have this structure:
     dataset/
     ├── data.yaml
     ├── train/
