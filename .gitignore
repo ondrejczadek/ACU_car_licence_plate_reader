@@ -38,6 +38,9 @@ __pycache__/
 # YOLO training runs
 runs/
 
+# SORT
+sort/
+
 # Datasets (typically large)
 dataset/
 

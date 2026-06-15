@@ -1,22 +1,29 @@
-ultralytics
-pandas
-opencv-python
-numpy
-scipy
-filterpy
-torch
-torchvision
+# ── Deep learning framework ────────────────────────────────────────────────────
+torch>=2.2.0
+torchvision>=0.17.0
 
-# OCR engines
-pytesseract
-easyocr
-paddleocr
-paddlepaddle
-python-doctr[torch]
-transformers
+# ── YOLO + object detection ────────────────────────────────────────────────────
+ultralytics>=8.3.0
 
-# web backend
-flask
+# ── SORT tracker (není na PyPI – musí být jako složka sort/ v projektu) ────────
+scipy>=1.12.0
+filterpy>=1.4.5
+numpy>=1.24.0
 
-# image processing
-Pillow
+# ── OCR enginy ─────────────────────────────────────────────────────────────────
+pytesseract>=0.3.10
+easyocr>=1.7.1
+paddlepaddle>=3.0.0
+paddleocr>=3.0.0
+python-doctr[torch]>=0.9.0
+transformers>=4.40.0
+
+# ── Image processing ───────────────────────────────────────────────────────────
+opencv-python>=4.9.0
+Pillow>=10.0.0
+
+# ── Web server ─────────────────────────────────────────────────────────────────
+flask>=3.0.0
+
+# ── Utilities ──────────────────────────────────────────────────────────────────
+pandas>=2.0.0

@@ -1,36 +1,16 @@
 from flask import Flask, Response, jsonify, render_template, request
 from ultralytics import YOLO
-import cv2
-import numpy as np
-import json
-import datetime
 import time
 import torch
-import os
-import logging
-import warnings
 import threading
 
-# potlac warningy
-os.environ['PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK'] = 'True'
-logging.getLogger('ppocr').setLevel(logging.ERROR)
-logging.getLogger('paddle').setLevel(logging.ERROR)
-warnings.filterwarnings('ignore')
+from util import *
 
-import pytesseract
-import easyocr
-from paddleocr import PaddleOCR
-from PIL import Image
-from collections import Counter
+warnings()
 
 from sort.sort import Sort
 
 app = Flask(__name__)
-
-# --- CONFIG ---
-TESS_CFG = '--oem 3 --psm 7 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
-source = './auta_pokus_SPZ.mp4'
-JSON_PATH = 'detections.json'
 
 # sdileny stav mezi vlakny
 lock = threading.Lock()
@@ -38,123 +18,7 @@ current_frame_jpg = None
 current_spz_list = []  # [{"text": "1AB 1234", "count": 5}, ...]
 is_running = False
 
-# --- POMOCNE FUNKCE ---
-
-def clean_text(text):
-    return ''.join(c for c in text.upper() if c.isalnum())
-
-
-def order_pts(pts):
-    rect = np.zeros((4, 2), dtype=np.float32)
-    s = pts.sum(axis=1)
-    rect[0] = pts[np.argmin(s)]
-    rect[2] = pts[np.argmax(s)]
-    d = np.diff(pts, axis=1)
-    rect[1] = pts[np.argmin(d)]
-    rect[3] = pts[np.argmax(d)]
-    return rect
-
-
-def make_plate_rectangle(plate_crop):
-    h, w = plate_crop.shape[:2]
-    gray = cv2.cvtColor(plate_crop, cv2.COLOR_BGR2GRAY)
-    blur = cv2.GaussianBlur(gray, (5, 5), 0)
-
-    edges = cv2.Canny(blur, 30, 120)
-    kern = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
-    edges = cv2.dilate(edges, kern, iterations=2)
-    contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-    best_quad = None
-    best_area = 0
-    for cnt in sorted(contours, key=cv2.contourArea, reverse=True)[:10]:
-        area = cv2.contourArea(cnt)
-        if area < 0.1 * w * h:
-            continue
-        peri = cv2.arcLength(cnt, True)
-        approx = cv2.approxPolyDP(cnt, 0.04 * peri, True)
-        if len(approx) == 4 and area > best_area:
-            best_quad = approx.reshape(4, 2).astype(np.float32)
-            best_area = area
-
-    if best_quad is not None and best_area > 0.15 * w * h:
-        src = order_pts(best_quad)
-    else:
-        _, binary = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
-        ys, xs = np.where(binary > 0)
-        if len(xs) < 10:
-            return cv2.resize(plate_crop, (400, 80), interpolation=cv2.INTER_CUBIC)
-        pts = np.column_stack((xs, ys)).astype(np.float32)
-        rect = cv2.minAreaRect(pts)
-        box = cv2.boxPoints(rect).astype(np.float32)
-        src = order_pts(box)
-
-    w_s = np.linalg.norm(src[1] - src[0])
-    h_s = np.linalg.norm(src[3] - src[0])
-    if h_s > w_s:
-        src = np.array([src[3], src[0], src[1], src[2]], dtype=np.float32)
-
-    ctr = np.mean(src, axis=0)
-    src = src + (src - ctr) * 0.05
-
-    dst = np.array([[0, 0], [399, 0], [399, 79], [0, 79]], dtype=np.float32)
-    M = cv2.getPerspectiveTransform(src, dst)
-    result = cv2.warpPerspective(plate_crop, M, (400, 80),
-                                  flags=cv2.INTER_CUBIC,
-                                  borderMode=cv2.BORDER_REPLICATE)
-    return result
-
-
-def remove_blue_strip(plate_img):
-    hsv = cv2.cvtColor(plate_img, cv2.COLOR_BGR2HSV)
-    blue_mask = cv2.inRange(hsv, np.array([85, 30, 30]), np.array([140, 255, 255]))
-    col_sums = np.sum(blue_mask > 0, axis=0)
-    blue_cols = np.where(col_sums > plate_img.shape[0] * 0.15)[0]
-
-    if len(blue_cols) > 0:
-        cut = int(blue_cols[-1]) + 8
-        if cut < plate_img.shape[1] * 0.3:
-            return plate_img[:, cut:]
-
-    min_cut = int(plate_img.shape[1] * 0.05)
-    return plate_img[:, min_cut:]
-
-
 json_lock = threading.Lock()
-
-def load_json():
-    if os.path.exists(JSON_PATH):
-        with open(JSON_PATH, 'r') as f:
-            return json.load(f)
-    return []
-
-def save_json(data):
-    with open(JSON_PATH, 'w') as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
-
-def add_detection(plate_text, score, car_id, frame_number):
-    with json_lock:
-        data = load_json()
-        now = datetime.datetime.now()
-        # pokud posledni zaznam se stejnou SPZ je < 2s stary, aktualizuj ho
-        merged = False
-        for i in range(len(data) - 1, -1, -1):
-            if data[i]["plate_text"] == plate_text:
-                last_ts = datetime.datetime.fromisoformat(data[i]["timestamp"])
-                if (now - last_ts).total_seconds() < 2:
-                    data[i]["count"] = max(data[i]["count"], score)
-                    data[i]["timestamp"] = now.isoformat()
-                    merged = True
-                break
-        if not merged:
-            data.append({
-                "timestamp": now.isoformat(),
-                "plate_text": plate_text,
-                "count": score,
-                "car_id": car_id,
-                "frame": frame_number
-            })
-        save_json(data)
 
 
 # --- DETEKCE VLAKNO ---
@@ -174,28 +38,9 @@ def _run_detection():
     device = 'mps' if torch.backends.mps.is_available() else 'cpu'
     print(f'[INFO] Device: {device}')
 
-    print('[INFO] 1/6 YOLO vehicle...')
     coco_model = YOLO('yolov8n.pt').to(device)
 
-    print('[INFO] 2/6 YOLO plate...')
     license_plate_detector = YOLO('license_plate_detector.pt').to(device)
-
-    print('[INFO] 3/6 EasyOCR...')
-    easy_reader = easyocr.Reader(['en'], gpu=False, verbose=False)
-
-    print('[INFO] 4/6 PaddleOCR...')
-    paddle_reader = PaddleOCR(lang='en')
-
-    print('[INFO] 5/6 docTR...')
-    from doctr.models import recognition_predictor
-    doctr_reader = recognition_predictor(pretrained=True)
-
-    print('[INFO] 6/6 TrOCR...')
-    from transformers import TrOCRProcessor, VisionEncoderDecoderModel
-    trocr_processor = TrOCRProcessor.from_pretrained('microsoft/trocr-base-printed')
-    trocr_model_ocr = VisionEncoderDecoderModel.from_pretrained('microsoft/trocr-base-printed')
-
-    print('[INFO] Vsechny modely nacteny.\n')
 
     # --- OCR funkce ---
     def read_tesseract(img):
