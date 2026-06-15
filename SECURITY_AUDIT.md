@@ -33,23 +33,23 @@
 
   ```
   ┌─────────────────────────────────────────────────────────┐
-  │                    Flask Web Server                       │
-  │                  (0.0.0.0:8080, HTTP)                    │
-  │                                                           │
-  │  Endpointy:                                              │
-  │    GET  /              → HTML UI (index.html)            │
-  │    GET  /video_feed    → MJPEG stream (real-time)        │
-  │    GET  /api/current   → JSON aktuální detekce           │
-  │    GET  /api/history   → JSON historie detekcí           │
-  │    DELETE /api/history/<plate> → smazání záznamu          │
-  │                                                           │
-  │  ┌──────────────────────────────────────────────────┐    │
-  │  │         Detekční vlákno (daemon thread)           │    │
-  │  │                                                    │    │
-  │  │  Video vstup → YOLO Vehicle → YOLO Plate →        │    │
-  │  │  → SORT Tracker → 5x OCR → Hlasování →            │    │
-  │  │  → detections.json                                 │    │
-  │  └──────────────────────────────────────────────────┘    │
+  │                    Flask Web Server                     │
+  │                  (0.0.0.0:8080, HTTP)                   │
+  │                                                         │
+  │  Endpointy:                                             │
+  │    GET  /              → HTML UI (index.html)           │
+  │    GET  /video_feed    → MJPEG stream (real-time)       │
+  │    GET  /api/current   → JSON aktuální detekce          │
+  │    GET  /api/history   → JSON historie detekcí          │
+  │    DELETE /api/history/<plate> → smazání záznamu        │
+  │                                                         │
+  │  ┌──────────────────────────────────────────────────┐   │
+  │  │         Detekční vlákno (daemon thread)          │   │
+  │  │                                                  │   │
+  │  │  Video vstup → YOLO Vehicle → YOLO Plate →       │   │
+  │  │  → SORT Tracker → 5x OCR → Hlasování →           │   │
+  │  │  → detections.json                               │   │
+  │  └──────────────────────────────────────────────────┘   │
   └─────────────────────────────────────────────────────────┘
                             │
                             ▼
