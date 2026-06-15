@@ -3,7 +3,7 @@ import glob
 
 from util import *
 
-warnings()
+suppress_warnings()
 
 # load all images
 image_files = sorted(
