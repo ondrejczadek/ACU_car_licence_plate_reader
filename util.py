@@ -14,20 +14,22 @@ from PIL import Image
 from collections import Counter
 from doctr.models import recognition_predictor
 from transformers import TrOCRProcessor, VisionEncoderDecoderModel
+import threading
 
+json_lock = threading.Lock()
 
 # --- CONFIG ---
 IMAGE_DIR = './dataset/images'
 TESS_CFG = '--oem 3 --psm 7 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
 source = './auta_pokus_SPZ.mp4'
-JSON_PATH = 'detections.json'
+JSON_PATH = 'test_results/detections.json'
 vehicles = [2, 3, 5, 7]
-
-# load models
 
 # use Apple GPU if available
 device = 'mps' if torch.backends.mps.is_available() else 'cpu'
 print(f'[INFO] Device: {device}')
+
+# load models
 
 coco_model = YOLO('models/yolov8n.pt').to(device)
 license_plate_detector = YOLO('models/license_plate_detector1.0.pt').to(device)
@@ -37,7 +39,7 @@ doctr_reader = recognition_predictor(pretrained=True)
 trocr_processor = TrOCRProcessor.from_pretrained('microsoft/trocr-base-printed')
 trocr_model = VisionEncoderDecoderModel.from_pretrained('microsoft/trocr-base-printed')
 
-def warnings():
+def suppress_warnings():
     os.environ['PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK'] = 'True'
     logging.getLogger('ppocr').setLevel(logging.ERROR)
     logging.getLogger('paddle').setLevel(logging.ERROR)
@@ -158,37 +160,93 @@ def preprocess_variants(plate_color):
 
     return variants
 
-def load_json():
-    if os.path.exists(JSON_PATH):
-        with open(JSON_PATH, 'r') as f:
-            return json.load(f)
-    return []
+# --- OCR engines ---
 
-def save_json(data):
-    with open(JSON_PATH, 'w') as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
+def read_tesseract(img):
+    text = pytesseract.image_to_string(img, config=TESS_CFG).strip()
+    return clean_text(text)
 
-def add_detection(plate_text, score, car_id, frame_number):
-    with json_lock:
-        data = load_json()
-        now = datetime.datetime.now()
-        # pokud posledni zaznam se stejnou SPZ je < 2s stary, aktualizuj ho
-        merged = False
-        for i in range(len(data) - 1, -1, -1):
-            if data[i]["plate_text"] == plate_text:
-                last_ts = datetime.datetime.fromisoformat(data[i]["timestamp"])
-                if (now - last_ts).total_seconds() < 2:
-                    data[i]["count"] = max(data[i]["count"], score)
-                    data[i]["timestamp"] = now.isoformat()
-                    merged = True
-                break
-        if not merged:
-            data.append({
-                "timestamp": now.isoformat(),
-                "plate_text": plate_text,
-                "count": score,
-                "car_id": car_id,
-                "frame": frame_number
-            })
-        save_json(data)
+def read_easyocr(img):
+    res = easy_reader.readtext(img, detail=0, allowlist='ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789')
+    return clean_text(''.join(res))
 
+def read_paddleocr(img):
+    try:
+        if len(img.shape) == 2:
+            img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+        result = paddle_reader.predict(img)
+        texts = []
+        if result:
+            for item in result:
+                if hasattr(item, '__getitem__') and 'rec_texts' in item:
+                    texts.extend(item['rec_texts'])
+        return clean_text(''.join(texts))
+    except Exception:
+        return ''
+
+def read_doctr(img):
+    try:
+        if len(img.shape) == 2:
+            img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+        result = doctr_reader([img])
+        texts = []
+        for page in result.pages:
+            for block in page.blocks:
+                for line in block.lines:
+                    for word in line.words:
+                        texts.append(word.value)
+        return clean_text(''.join(texts))
+    except Exception:
+        return ''
+
+def read_trocr(img):
+    try:
+        if len(img.shape) == 2:
+            pil_img = Image.fromarray(img)
+        else:
+            pil_img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+        pixel_values = trocr_processor(images=pil_img, return_tensors="pt").pixel_values
+        generated_ids = trocr_model.generate(pixel_values, max_new_tokens=20)
+        text = trocr_processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
+        return clean_text(text)
+    except Exception:
+        return ''
+
+def read_plate_5engines(plate_img):
+    """Precte SPZ vsemi 5 enginy, vrati seznam platnych cteni (7-8 znaku)."""
+    plate_no_blue = remove_blue_strip(plate_img)
+
+    # roztazeni na 400x80 obdelnik
+    plate_rect = cv2.resize(plate_no_blue, (400, 80), interpolation=cv2.INTER_CUBIC)
+    gray = cv2.cvtColor(plate_rect, cv2.COLOR_BGR2GRAY)
+    _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+
+    readings = []
+    for eng_func in [read_tesseract, read_easyocr, read_paddleocr, read_doctr, read_trocr]:
+        text = eng_func(thresh)
+        if len(text) == 7 or len(text) == 8:
+            readings.append(text)
+
+    return readings
+
+# --- OCR function ---
+
+def vote_readings(readings):
+    if not readings:
+        return None
+    
+    if len(readings) == 1:
+        return readings[0]
+
+    lengths = [len(r) for r in readings]
+    target_len = Counter(lengths).most_common(1)[0][0]
+    valid = [r for r in readings if len(r) == target_len]
+
+    voted = ''
+    for i in range(target_len):
+        chars = [r[i] for r in valid]
+        voted += Counter(chars).most_common(1)[0][0]
+
+    if len(voted) == 7 or len(voted) == 8:
+        return voted
+    return None
