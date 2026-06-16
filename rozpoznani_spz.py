@@ -2,8 +2,6 @@ from util import *
 import os
 import glob
 
-suppress_warnings()
-
 # load all images
 image_files = sorted(
     glob.glob(os.path.join(IMAGE_DIR, '*.png')) +
@@ -92,7 +90,6 @@ for idx, img_path in enumerate(image_files):
         spz_text = '???'
     print(f'  ==> SPZ: {spz_text}\n')
 
-    # zobrazeni
     cv2.rectangle(display, (int(x1), int(y1)), (int(x2), int(y2)), (0, 0, 255), 3)
     font = cv2.FONT_HERSHEY_SIMPLEX
     text_size = cv2.getTextSize(spz_text, font, 1.5, 3)[0]
